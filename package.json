@@ -1,0 +1,49 @@
+{
+  "name": "september-step-race",
+  "version": "1.0.0",
+  "description": "Retro pixel-art step race for September 2026",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "validate": "tsx --tsconfig tsconfig.json scripts/validate-race.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/siddhanth-rao13/september-step-race.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/siddhanth-rao13/september-step-race/issues"
+  },
+  "homepage": "https://github.com/siddhanth-rao13/september-step-race#readme",
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "next": "^15.5.25",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^26.4.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@typescript-eslint/eslint-plugin": "^8.69.0",
+    "@typescript-eslint/parser": "^8.69.0",
+    "autoprefixer": "^10.5.5",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.4",
+    "lightningcss-darwin-arm64": "^1.32.0",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.13",
+    "typescript": "^6.0.3"
+  }
+}

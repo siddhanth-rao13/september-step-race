@@ -1,0 +1,569 @@
+@import "tailwindcss";
+@source "../app/**/*.{js,jsx,ts,tsx}";
+@source "../components/**/*.{js,jsx,ts,tsx}";
+
+/* ==========================================================================
+   September Step Race — scene styles
+
+   The whole race is one wide horizontal world. The phone screen is a viewport
+   onto it. All vertical layout is driven by the custom properties below, so
+   the scene can be re-proportioned by editing a handful of numbers.
+   ========================================================================== */
+
+:root {
+  /*
+   * Vertical bands, measured from the bottom of the scene upwards. They grow
+   * with the screen so a tall phone gets a bigger road and bigger runners
+   * rather than a tall empty sky.
+   */
+  --axis-h: 50px;                                 /* step axis ruler         */
+  --plate-h: 70px;                                /* runner nameplates       */
+  --road-h: clamp(104px, 21vh, 190px);            /* the running surface     */
+  --city-h: clamp(140px, 38vh, 340px);            /* city / park backdrop    */
+
+  --runner-h: clamp(84px, 17vh, 152px);           /* runner sprite height    */
+  --sign-h: clamp(46px, 9vh, 78px);               /* milestone sign height   */
+
+  /* Where a runner's feet land inside the road band (fraction from its top). */
+  --road-surface: 0.68;
+
+  --sky-top: #0a63c4;
+  --sky-bottom: #0694ef;
+  --ink: #150f1f;
+  --ink-soft: #2b2138;
+  --paper: #fff3cd;
+  --gold: #ffd23f;
+  --hud: #191226;
+}
+
+@media (max-height: 560px) {
+  :root {
+    --plate-h: 58px;
+    --axis-h: 44px;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-pixel), "Courier New", monospace;
+  /* The race scrolls sideways; the page itself never scrolls at all. */
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+img {
+  display: block;
+  /* Keeps the pixel art crisp instead of blurring it when scaled. */
+  image-rendering: pixelated;
+  -webkit-user-drag: none;
+  user-select: none;
+  /* No "save image" menu when a runner is pressed and held on iOS. */
+  -webkit-touch-callout: none;
+}
+
+/* --------------------------------------------------------------- shell -- */
+
+.race-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 100svh;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--ink);
+}
+
+/* --------------------------------------------------------------- header -- */
+
+.race-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px max(8px, env(safe-area-inset-left)) 7px max(8px, env(safe-area-inset-right));
+  background: var(--hud);
+  border-bottom: 3px solid var(--gold);
+}
+
+/* The pixel font is monospaced at one character per em, so the header sizes
+   are tied to the viewport width to guarantee the title stays on one line. */
+.race-title {
+  margin: 0;
+  min-width: 0;
+  font-size: clamp(8px, 2.5vw, 17px);
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--gold);
+  text-shadow: 2px 2px 0 #000;
+}
+
+.race-updated {
+  margin: 0;
+  flex: 0 0 auto;
+  text-align: right;
+  font-size: clamp(5.5px, 1.55vw, 9px);
+  line-height: 1.7;
+  color: #9d93b5;
+  white-space: nowrap;
+}
+
+.race-updated strong {
+  display: block;
+  font-weight: 400;
+  font-size: clamp(6.5px, 1.75vw, 11px);
+  color: var(--paper);
+}
+
+/* --------------------------------------------------------------- viewport -- */
+
+.race-viewport {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+  /* Locks the gesture to horizontal panning so the page can never bounce. */
+  touch-action: pan-x;
+  scrollbar-width: thin;
+  background: linear-gradient(180deg, var(--sky-top), var(--sky-bottom));
+}
+
+.race-viewport::-webkit-scrollbar { height: 8px; }
+.race-viewport::-webkit-scrollbar-track { background: #0d0a14; }
+.race-viewport::-webkit-scrollbar-thumb { background: #4a4160; border: 2px solid #0d0a14; }
+
+.race-world {
+  position: relative;
+  height: 100%;
+  min-height: calc(var(--city-h) + var(--road-h) + var(--plate-h) + var(--axis-h) + 46px);
+}
+
+/* --------------------------------------------------------------- scenery -- */
+
+.layer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.sky {
+  top: 0;
+  bottom: calc(var(--axis-h) + var(--plate-h) + var(--road-h) + var(--city-h));
+  background: linear-gradient(180deg, var(--sky-top), var(--sky-bottom));
+}
+
+.city,
+.road {
+  background-repeat: repeat-x;
+  background-position: left bottom;
+  background-size: auto 100%;
+  image-rendering: pixelated;
+}
+
+.city {
+  height: var(--city-h);
+  bottom: calc(var(--axis-h) + var(--plate-h) + var(--road-h));
+  background-image: url("/assets/background-city-tile.png");
+}
+
+.road {
+  height: var(--road-h);
+  bottom: calc(var(--axis-h) + var(--plate-h));
+  background-image: url("/assets/road-track-tile.png");
+}
+
+/* Everything that stands on the grass verge at the top edge of the road. */
+.verge {
+  bottom: calc(var(--axis-h) + var(--plate-h) + var(--road-h));
+  top: 0;
+}
+
+.prop {
+  position: absolute;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: auto;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.22));
+}
+
+.cloud {
+  position: absolute;
+  transform: translateX(-50%);
+  opacity: 0.92;
+}
+
+/* --------------------------------------------------------------- milestones -- */
+
+.milestone {
+  position: absolute;
+  bottom: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.milestone-sign {
+  height: var(--sign-h);
+  width: auto;
+}
+
+/* Milestones past the dedicated artwork get a post plus a label drawn in code,
+   sized to match the supplied signs so the roadside stays consistent. */
+.milestone-post {
+  height: calc(var(--sign-h) * 0.5);
+  width: auto;
+}
+
+.milestone-plate {
+  position: relative;
+  z-index: 1;
+  margin-bottom: -3px;
+  padding: 4px 5px;
+  font-size: 7px;
+  line-height: 1;
+  color: #eef4ff;
+  background: #23438a;
+  border: 2px solid #0c1730;
+  box-shadow: inset 0 0 0 2px #6f9ada, 2px 2px 0 rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------- finish -- */
+
+/* The finish arch stands on the same ground line as the runners. */
+.finish {
+  position: absolute;
+  bottom: calc(var(--axis-h) + var(--plate-h) + var(--road-h) * (1 - var(--road-surface)));
+  transform: translateX(-50%);
+  z-index: 4;
+  pointer-events: none;
+}
+
+.finish img {
+  height: calc(var(--runner-h) * 1.45);
+  width: auto;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.3));
+}
+
+/* Chequered strip painted across the road right under the arch. */
+.finish-tape {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  bottom: calc(var(--road-h) * (var(--road-surface) - 1));
+  height: var(--road-h);
+  background:
+    repeating-conic-gradient(#f7f7f7 0% 25%, #14101c 0% 50%) 0 0 / 8px 8px;
+  opacity: 0.92;
+}
+
+/* --------------------------------------------------------------- runners -- */
+
+.runners {
+  bottom: calc(var(--axis-h) + var(--plate-h));
+  top: 0;
+  pointer-events: none;
+}
+
+.runner {
+  position: absolute;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  display: block;
+  /* A generous touch target around a fairly narrow sprite. */
+  padding: 6px 10px;
+}
+
+.runner img {
+  height: var(--runner-h);
+  width: auto;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.3));
+  transition: transform 120ms steps(2, end);
+}
+
+.runner[aria-expanded="true"] img,
+.runner:focus-visible img {
+  transform: translateY(-5px) scale(1.06);
+}
+
+.runner:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 0;
+}
+
+/* Small badge over whoever is currently leading. */
+.runner-crown {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 4px;
+  font-size: 7px;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--gold);
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------- nameplates -- */
+
+.plates {
+  bottom: var(--axis-h);
+  height: var(--plate-h);
+  top: auto;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(21, 15, 31, 0.92), var(--ink));
+  border-top: 2px solid #3a2f50;
+}
+
+.plate {
+  position: absolute;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  pointer-events: none;
+}
+
+/* Ties the plate to the runner standing directly above it. */
+.plate-stem {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--accent);
+  opacity: 0.6;
+}
+
+/* The name sits in a chip tinted with that runner's accent colour. */
+.plate-name {
+  font-size: 7px;
+  line-height: 1;
+  padding: 3px 4px;
+  background: var(--accent);
+  color: var(--ink);
+  border: 2px solid rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+}
+
+.plate-total {
+  font-size: 8px;
+  line-height: 1;
+  color: var(--paper);
+  text-shadow: 1px 1px 0 #000;
+  white-space: nowrap;
+}
+
+.plate-total[data-missing="true"] {
+  font-size: 6px;
+  color: #9d93b5;
+}
+
+@media (min-width: 480px) {
+  .plate-name { font-size: 8px; }
+  .plate-total { font-size: 10px; }
+}
+
+/* --------------------------------------------------------------- tooltip -- */
+
+.tooltip {
+  position: absolute;
+  z-index: 40;
+  width: 168px;
+  padding: 8px 9px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+}
+
+.tooltip {
+  transform: translateX(-50%);
+}
+
+.tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: var(--arrow-left, 50%);
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 9px solid var(--ink);
+}
+
+.tooltip h2 {
+  margin: 0 0 6px;
+  font-size: 8px;
+  line-height: 1.2;
+  padding-bottom: 5px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.tooltip dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 6px;
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+.tooltip dt { color: #6d5f80; }
+.tooltip dd { margin: 0; text-align: right; white-space: nowrap; }
+
+/* --------------------------------------------------------------- axis -- */
+
+.axis {
+  bottom: 0;
+  height: var(--axis-h);
+  background: #100c1a;
+  border-top: 3px solid var(--gold);
+  top: auto;
+}
+
+.axis-tick {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 8px;
+  background: #5c5077;
+  transform: translateX(-50%);
+}
+
+.axis-tick[data-major="true"] {
+  height: 14px;
+  width: 3px;
+  background: var(--gold);
+}
+
+.axis-label {
+  position: absolute;
+  top: 18px;
+  transform: translateX(-50%);
+  font-size: 7px;
+  line-height: 1;
+  color: #a79ac0;
+  white-space: nowrap;
+}
+
+.axis-label[data-major="true"] {
+  font-size: 9px;
+  color: var(--paper);
+}
+
+.axis-label[data-first="true"] { color: var(--gold); }
+
+.axis-hint {
+  position: absolute;
+  top: 34px;
+  transform: translateX(-50%);
+  font-size: 6px;
+  line-height: 1;
+  color: #6d6288;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------- swipe cue -- */
+
+.race-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+.swipe-cue {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+  z-index: 50;
+  padding: 6px 10px;
+  font-size: 7px;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+  background: var(--gold);
+  border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  animation: cue-nudge 1.4s steps(4, end) infinite;
+}
+
+.swipe-cue[data-hidden="true"] {
+  opacity: 0;
+  transition: opacity 260ms linear;
+}
+
+@keyframes cue-nudge {
+  0%, 100% { transform: translateX(calc(-50% - 4px)); }
+  50%      { transform: translateX(calc(-50% + 4px)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swipe-cue { animation: none; }
+  .runner img { transition: none; }
+}
+
+/* --------------------------------------------------------------- data page -- */
+
+.data-page {
+  height: 100dvh;
+  overflow-y: auto;
+  padding: 20px 16px 40px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 11px;
+}
+
+.data-page a { color: var(--gold); }
+
+.data-page table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9px;
+}
+
+.data-page th,
+.data-page td {
+  border: 2px solid #3a2f50;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.data-page th { background: #241c36; color: var(--gold); }

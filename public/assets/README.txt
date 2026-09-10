@@ -1,0 +1,1 @@
+September Step Race asset pack. Use milestone-marker.png for all milestones beyond 25K and render labels in code.
