@@ -1,5 +1,7 @@
 # September Step Race
 
+URL - https://september-step-race.onrender.com
+
 A private step-count race for September 2026, drawn as a retro pixel-art running
 game. Five runners move along one long horizontal road; the further right you
 are, the more steps you have walked. The whole race is one wide world and the
